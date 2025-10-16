@@ -1,0 +1,29 @@
+[package]
+name = "afjp_crypto"
+version = "1.0.0"
+authors = ["David M. (daveylupes) - https://github.com/daveylupes"]
+
+[addresses]
+afjp_crypto = "0xd6f8c1aa28728e5187c7fa289041dba6e5ba86f2d1849d811f4c12314514d107"
+std = "0x1"
+aptos_framework = "0x1"
+aptos_std = "0x1"
+
+[dev-addresses]
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "mainnet"
+subdir = "aptos-move/framework/aptos-framework"
+
+[dependencies.AptosStdlib]
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "mainnet"
+subdir = "aptos-move/framework/aptos-stdlib"
+
+[dependencies.MoveStdlib]
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "mainnet"
+subdir = "aptos-move/framework/move-stdlib"
+
+[dev-dependencies]

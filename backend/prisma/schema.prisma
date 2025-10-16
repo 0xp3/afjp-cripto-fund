@@ -1,0 +1,191 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Users and Authentication
+model User {
+  id             Int      @id @default(autoincrement())
+  walletAddress  String   @unique @map("wallet_address") @db.VarChar(66)
+  email          String?  @unique @db.VarChar(255)
+  firstName      String?  @map("first_name") @db.VarChar(100)
+  lastName       String?  @map("last_name") @db.VarChar(100)
+  kycStatus      String   @default("pending") @map("kyc_status") @db.VarChar(20)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  tokenBalances      TokenBalance[]
+  tokenTransactions  TokenTransaction[]
+  vestingSchedules   VestingSchedule[]
+  stakingRecords     StakingRecord[]
+  loans              Loan[]
+  beneficiaries      Beneficiary[]
+  inheritanceRequests InheritanceRequest[]
+
+  @@map("users")
+}
+
+// Token Balances
+model TokenBalance {
+  id           Int     @id @default(autoincrement())
+  userId       Int     @map("user_id")
+  tokenType    String  @map("token_type") @db.VarChar(20) // 'AFJP', 'JUVENTUD', 'LADRILLO'
+  balance      Decimal @default(0) @db.Decimal(20, 8)
+  lockedBalance Decimal @default(0) @map("locked_balance") @db.Decimal(20, 8)
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tokenType])
+  @@map("token_balances")
+}
+
+// Token Transactions
+model TokenTransaction {
+  id               Int      @id @default(autoincrement())
+  userId           Int      @map("user_id")
+  tokenType        String   @map("token_type") @db.VarChar(20)
+  transactionType  String   @map("transaction_type") @db.VarChar(20) // 'mint', 'burn', 'transfer', 'stake', 'unstake'
+  amount           Decimal  @db.Decimal(20, 8)
+  txHash           String?  @map("tx_hash") @db.VarChar(66)
+  blockNumber      BigInt?  @map("block_number")
+  status           String   @default("pending") @db.VarChar(20)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("token_transactions")
+}
+
+// Vesting Schedules
+model VestingSchedule {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @map("user_id")
+  totalAmount   Decimal  @map("total_amount") @db.Decimal(20, 8)
+  releasedAmount Decimal @default(0) @map("released_amount") @db.Decimal(20, 8)
+  startTime     DateTime @map("start_time")
+  endTime       DateTime @map("end_time")
+  cliffTime     DateTime? @map("cliff_time")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("vesting_schedules")
+}
+
+// Staking Records
+model StakingRecord {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  stakedAmount Decimal  @map("staked_amount") @db.Decimal(20, 8)
+  rewardClaimed Decimal @default(0) @map("reward_claimed") @db.Decimal(20, 8)
+  stakedAt     DateTime @default(now()) @map("staked_at")
+  unstakedAt   DateTime? @map("unstaked_at")
+  isActive     Boolean  @default(true) @map("is_active")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("staking_records")
+}
+
+// Properties
+model Property {
+  id                Int      @id @default(autoincrement())
+  name              String   @db.VarChar(255)
+  location          String   @db.VarChar(255)
+  propertyType      String   @map("property_type") @db.VarChar(50) // 'building', 'home', 'tourism'
+  totalValue        Decimal  @map("total_value") @db.Decimal(20, 2)
+  rentalIncome      Decimal? @map("rental_income") @db.Decimal(20, 2)
+  isTokenized       Boolean  @default(false) @map("is_tokenized")
+  tokenId           String?  @map("token_id") @db.VarChar(66)
+  totalFractions    BigInt?  @map("total_fractions")
+  ownerAddress      String?  @map("owner_address") @db.VarChar(66)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  auctions PropertyAuction[]
+
+  @@map("properties")
+}
+
+// Property Auctions
+model PropertyAuction {
+  id             Int      @id @default(autoincrement())
+  propertyId     Int      @map("property_id")
+  startingPrice  Decimal  @map("starting_price") @db.Decimal(20, 2)
+  currentBid     Decimal? @map("current_bid") @db.Decimal(20, 2)
+  highestBidder  String?  @map("highest_bidder") @db.VarChar(66)
+  startTime      DateTime @map("start_time")
+  endTime        DateTime @map("end_time")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relations
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("property_auctions")
+}
+
+// Loans
+model Loan {
+  id              Int      @id @default(autoincrement())
+  borrowerId      Int      @map("borrower_id")
+  collateralAmount Decimal @map("collateral_amount") @db.Decimal(20, 8)
+  borrowedAmount  Decimal  @map("borrowed_amount") @db.Decimal(20, 8)
+  interestRate    Decimal  @map("interest_rate") @db.Decimal(5, 2)
+  startTime       DateTime @map("start_time")
+  dueDate         DateTime @map("due_date")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  borrower User @relation(fields: [borrowerId], references: [id], onDelete: Cascade)
+
+  @@map("loans")
+}
+
+// Beneficiaries
+model Beneficiary {
+  id                     Int     @id @default(autoincrement())
+  userId                 Int     @map("user_id")
+  beneficiaryAddress     String  @map("beneficiary_address") @db.VarChar(66)
+  isPrimary              Boolean @default(false) @map("is_primary")
+  distributionPercentage Decimal @default(100) @map("distribution_percentage") @db.Decimal(5, 2)
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("beneficiaries")
+}
+
+// Inheritance Requests
+model InheritanceRequest {
+  id              Int      @id @default(autoincrement())
+  requesterId     Int      @map("requester_id")
+  deceasedAddress String   @map("deceased_address") @db.VarChar(66)
+  requestTime     DateTime @default(now()) @map("request_time")
+  status          String   @default("pending") @db.VarChar(20) // 'pending', 'approved', 'rejected'
+  approvedBy      String?  @map("approved_by") @db.VarChar(66)
+  approvedAt      DateTime? @map("approved_at")
+  notes           String?  @db.Text
+
+  // Relations
+  requester User @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+
+  @@map("inheritance_requests")
+}
